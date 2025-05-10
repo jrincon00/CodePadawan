@@ -140,6 +140,7 @@ const CodeEditor: React.FC = () => {
         languageExtension,
         oneDark,
         customTheme,
+        autocompletion({ override: language === "java" ? [javaCompletions] : undefined, }),
         keymap.of(defaultKeymap),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
