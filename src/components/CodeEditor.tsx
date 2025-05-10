@@ -140,14 +140,7 @@ const CodeEditor: React.FC = () => {
         languageExtension,
         oneDark,
         customTheme,
-        autocompletion({ override: language === "java" ? [javaCompletions] : undefined, }),
-        keymap.of([
-          ...defaultKeymap,
-          ...completionKeymap, // Añadir teclas de autocompletado (Ctrl-Space, etc.)
-        ]),
-        autocompletion({
-          override: language === "javascript" ? [jsCompletions] : undefined,
-        }), // Activar autocompletado con fuente personalizada para JS
+        keymap.of(defaultKeymap),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             setCode(update.state.doc.toString());
@@ -185,17 +178,20 @@ const CodeEditor: React.FC = () => {
 
     try {
       if (language === "javascript") {
-        let consoleOutput = "";
-        const originalLog = console.log;
-        console.log = (...args) => {
-          consoleOutput += args.join(" ") + "\n";
-          originalLog(...args);
-        };
-        const resultado = eval(codigo);
-        console.log = originalLog;
-        setOutput(
-          consoleOutput || resultado?.toString() || "❌ No se recibió salida."
-        );
+        const worker = new Worker(new URL("../workers/worker.js", import.meta.url));
+    
+    let timeout = setTimeout(() => {
+      worker.terminate();
+      setOutput("❌ Error: Se ha detenido la ejecución por posible bucle infinito.");
+    }, 3000); // Limita ejecución a 3 segundos
+
+    worker.onmessage = (e) => {
+      clearTimeout(timeout);
+      setOutput(e.data);
+      worker.terminate();
+    };
+
+    worker.postMessage({ codigo });
       } else if (language === "python") {
         if (!pyodideInstance) {
           setOutput("❌ Pyodide aún no está listo, intenta nuevamente...");
