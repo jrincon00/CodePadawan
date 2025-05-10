@@ -12,6 +12,20 @@ import { defaultKeymap } from "@codemirror/commands";
 import { autocompletion, completionKeymap, CompletionContext, Completion } from "@codemirror/autocomplete";
 import { PyodideInterface } from "../types/pyodide";
 
+function javaCompletions(context: CompletionContext) {
+  let word = context.matchBefore(/\w*/);
+  if (!word || (word.from === word.to && !context.explicit)) return null;
+
+  return {
+    from: word.from,
+    options: [
+      { label: "System.out.println", type: "function", detail: "Java" },
+      { label: "public static void main", type: "function", detail: "Java" },
+      { label: "ArrayList", type: "class", detail: "Java" }
+    ]
+  };
+}
+
 const loadPyodide = async (): Promise<PyodideInterface> => {
   console.log("🔄 Cargando Pyodide...");
   const script = document.createElement("script");
@@ -126,13 +140,7 @@ const CodeEditor: React.FC = () => {
         languageExtension,
         oneDark,
         customTheme,
-        keymap.of([
-          ...defaultKeymap,
-          ...completionKeymap, // Añadir teclas de autocompletado (Ctrl-Space, etc.)
-        ]),
-        autocompletion({
-          override: language === "javascript" ? [jsCompletions] : undefined,
-        }), // Activar autocompletado con fuente personalizada para JS
+        keymap.of(defaultKeymap),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             setCode(update.state.doc.toString());
