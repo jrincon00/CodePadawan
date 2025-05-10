@@ -9,6 +9,7 @@ import { java } from "@codemirror/lang-java";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { keymap } from "@codemirror/view";
 import { defaultKeymap } from "@codemirror/commands";
+import { autocompletion, completionKeymap, CompletionContext, Completion } from "@codemirror/autocomplete";
 import { PyodideInterface } from "../types/pyodide";
 
 const loadPyodide = async (): Promise<PyodideInterface> => {
@@ -34,6 +35,25 @@ const loadPyodide = async (): Promise<PyodideInterface> => {
   });
 };
 
+// Fuente de autocompletado personalizada para JavaScript
+const jsCompletions = (context: CompletionContext) => {
+  const word = context.matchBefore(/\w*/);
+  if (!word || word.from === word.to && !context.explicit) return null;
+
+  const completions: Completion[] = [
+    { label: "console.log", type: "function", detail: "Log to console" },
+    { label: "alert", type: "function", detail: "Show alert" },
+    { label: "document", type: "variable", detail: "DOM document" },
+    { label: "window", type: "variable", detail: "Browser window" },
+    // Agrega más completados según sea necesario
+  ];
+
+  return {
+    from: word.from,
+    options: completions,
+  };
+};
+
 const CodeEditor: React.FC = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const editorInstance = useRef<EditorView | null>(null);
@@ -46,13 +66,6 @@ const CodeEditor: React.FC = () => {
     useState<PyodideInterface | null>(null);
   const [isPyodideReady, setIsPyodideReady] = useState<boolean>(false);
 
-  const handleLanguageChange = (
-    newLanguage: "javascript" | "python" | "html" | "java"
-  ) => {
-    setLanguage(newLanguage);
-    setOutput(""); // Limpia la salida cuando cambias de lenguaje
-  };
-
   const customTheme = EditorView.theme({
     "& .cm-content": {
       fontFamily: "'Fira Code', monospace",
@@ -61,6 +74,17 @@ const CodeEditor: React.FC = () => {
     },
     "& .cm-editor": { backgroundColor: "#000" },
     "&.cm-line": { overflowWrap: "break-word" },
+    ".cm-completionList": {
+      backgroundColor: "#222",
+      border: "1px solid #444",
+      color: "#fff",
+    },
+    ".cm-completionItem": {
+      padding: "2px 8px",
+    },
+    ".cm-completionItem:hover": {
+      backgroundColor: "#333",
+    },
   });
 
   useEffect(() => {
@@ -81,26 +105,34 @@ const CodeEditor: React.FC = () => {
         : language === "python"
         ? 'print("¡Hola, mundo! 🚀")'
         : language === "html"
-        ? `<p style="font-size: 18px; line-height: 1.6; max-width: 600px; 
-            color: #ddd;">¡Hola, mundo! 🚀</p>`
+        ? `<p style="font-size: 18px; line-height: 1.6; max-width: 600px; color: #ddd;">¡Hola, mundo! 🚀</p>`
         : 'System.out.println("Hola, mundo!");';
 
     console.log(`Initializing editor for language: ${language}`);
+
+    const languageExtension =
+      language === "javascript"
+        ? javascript()
+        : language === "python"
+        ? python()
+        : language === "html"
+        ? html()
+        : java();
 
     const state = EditorState.create({
       doc: initialDoc,
       extensions: [
         basicSetup,
-        language === "javascript"
-          ? javascript()
-          : language === "python"
-          ? python()
-          : language === "html"
-          ? html()
-          : java(),
+        languageExtension,
         oneDark,
         customTheme,
-        keymap.of(defaultKeymap),
+        keymap.of([
+          ...defaultKeymap,
+          ...completionKeymap, // Añadir teclas de autocompletado (Ctrl-Space, etc.)
+        ]),
+        autocompletion({
+          override: language === "javascript" ? [jsCompletions] : undefined,
+        }), // Activar autocompletado con fuente personalizada para JS
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             setCode(update.state.doc.toString());
@@ -138,17 +170,20 @@ const CodeEditor: React.FC = () => {
 
     try {
       if (language === "javascript") {
-        let consoleOutput = "";
-        const originalLog = console.log;
-        console.log = (...args) => {
-          consoleOutput += args.join(" ") + "\n";
-          originalLog(...args);
-        };
-        const resultado = eval(codigo);
-        console.log = originalLog;
-        setOutput(
-          consoleOutput || resultado?.toString() || "❌ No se recibió salida."
-        );
+        const worker = new Worker(new URL("../workers/worker.js", import.meta.url));
+    
+    let timeout = setTimeout(() => {
+      worker.terminate();
+      setOutput("❌ Error: Se ha detenido la ejecución por posible bucle infinito.");
+    }, 3000); // Limita ejecución a 3 segundos
+
+    worker.onmessage = (e) => {
+      clearTimeout(timeout);
+      setOutput(e.data);
+      worker.terminate();
+    };
+
+    worker.postMessage({ codigo });
       } else if (language === "python") {
         if (!pyodideInstance) {
           setOutput("❌ Pyodide aún no está listo, intenta nuevamente...");
@@ -163,13 +198,11 @@ sys.stdout.getvalue()`;
         const output = await pyodideInstance.runPythonAsync(wrappedCode);
         setOutput(output || "❌ No se recibió salida.");
       } else if (language === "html") {
-        // Wrap HTML in a basic document with CSS reset for consistent rendering
         const wrappedHtml = `
 <!DOCTYPE html>
 <html>
 <head>
   <style>
-    /* Minimal CSS reset to ensure consistent default styles */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; }
     p { font-size: 1em; margin-bottom: 1em; }
@@ -236,7 +269,7 @@ public class Main {
         <button
           onClick={() => {
             setLanguage("javascript");
-            setOutput(""); 
+            setOutput("");
           }}
           style={{
             flex: 1,
@@ -253,11 +286,10 @@ public class Main {
         >
           JavaScript
         </button>
-
         <button
           onClick={() => {
             setLanguage("python");
-            setOutput(""); 
+            setOutput("");
           }}
           style={{
             flex: 1,
@@ -276,7 +308,7 @@ public class Main {
         <button
           onClick={() => {
             setLanguage("html");
-            setOutput(""); 
+            setOutput("");
           }}
           style={{
             flex: 1,
@@ -295,7 +327,7 @@ public class Main {
         <button
           onClick={() => {
             setLanguage("java");
-            setOutput(""); 
+            setOutput("");
           }}
           style={{
             flex: 1,
@@ -332,15 +364,13 @@ public class Main {
           borderRadius: "5px",
           background:
             language === "python"
-              ? "#007BFF" // Azul para Python
+              ? "#007BFF"
               : language === "java"
-              ? "#D32F2F" // Rojo para Java
+              ? "#D32F2F"
               : language === "html"
-              ? "#FF9800" // Naranja para HTML
-              : language === "javascript"
-              ? "#FFEB3B"
-              : "#4CAF50", // Amarillo para JavaScript
-          color: language === "javascript" ? "#000" : "#fff", // Texto oscuro solo para amarillo
+              ? "#FF9800"
+              : "#FFEB3B",
+          color: language === "javascript" ? "#000" : "#fff",
           border: "none",
           cursor: "pointer",
           opacity: !isPyodideReady && language === "python" ? 0.5 : 1,
