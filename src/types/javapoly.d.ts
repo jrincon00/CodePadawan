@@ -1,5 +1,8 @@
 declare global {
   interface Window {
-    Javapoly: any;
+    Javapoly?: {
+      runSnippet: (code: string) => Promise<string>;
+    };
+    loadPyodide: () => Promise<PyodideInterface>; // ✅ Aseguramos que siempre es una función
   }
 }
