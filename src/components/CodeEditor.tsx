@@ -39,12 +39,26 @@ const CodeEditor: React.FC = () => {
   const editorInstance = useRef<EditorView | null>(null);
   const [code, setCode] = useState<string>("");
   const [output, setOutput] = useState<string>("");
-  const [language, setLanguage] = useState<"javascript" | "python" | "html" | "java">("javascript");
-  const [pyodideInstance, setPyodideInstance] = useState<PyodideInterface | null>(null);
+  const [language, setLanguage] = useState<
+    "javascript" | "python" | "html" | "java"
+  >("javascript");
+  const [pyodideInstance, setPyodideInstance] =
+    useState<PyodideInterface | null>(null);
   const [isPyodideReady, setIsPyodideReady] = useState<boolean>(false);
 
+  const handleLanguageChange = (
+    newLanguage: "javascript" | "python" | "html" | "java"
+  ) => {
+    setLanguage(newLanguage);
+    setOutput(""); // Limpia la salida cuando cambias de lenguaje
+  };
+
   const customTheme = EditorView.theme({
-    "& .cm-content": { fontFamily: "'Fira Code', monospace", fontSize: "16px", color: "#ff5733" },
+    "& .cm-content": {
+      fontFamily: "'Fira Code', monospace",
+      fontSize: "16px",
+      color: "#ff5733",
+    },
     "& .cm-editor": { backgroundColor: "#000" },
     "&.cm-line": { overflowWrap: "break-word" },
   });
@@ -63,14 +77,13 @@ const CodeEditor: React.FC = () => {
 
     const initialDoc =
       language === "javascript"
-        ? "console.log('hola');"
+        ? "console.log('¡Hola, mundo! 🚀');"
         : language === "python"
         ? 'print("¡Hola, mundo! 🚀")'
         : language === "html"
-        ? `<h1 style="font-size: 24px; color: blue;">Título Principal</h1>
-<p style="font-size: 16px;">Este es un párrafo.</p>
-<div style="font-size: 14px; color: green;">Contenido en div</div>`
-        : 'System.out.println("Hola desde Java");';
+        ? `<p style="font-size: 18px; line-height: 1.6; max-width: 600px; 
+            color: #ddd;">¡Hola, mundo! 🚀</p>`
+        : 'System.out.println("Hola, mundo!");';
 
     console.log(`Initializing editor for language: ${language}`);
 
@@ -133,7 +146,9 @@ const CodeEditor: React.FC = () => {
         };
         const resultado = eval(codigo);
         console.log = originalLog;
-        setOutput(consoleOutput || resultado?.toString() || "❌ No se recibió salida.");
+        setOutput(
+          consoleOutput || resultado?.toString() || "❌ No se recibió salida."
+        );
       } else if (language === "python") {
         if (!pyodideInstance) {
           setOutput("❌ Pyodide aún no está listo, intenta nuevamente...");
@@ -198,18 +213,106 @@ public class Main {
 
   return (
     <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
-      <h1>Editor de Código</h1>
-      <div style={{ marginBottom: "10px" }}>
-        <select
-          onChange={(e) => setLanguage(e.target.value as "javascript" | "python" | "html" | "java")}
-          style={{ padding: "8px", fontSize: "16px" }}
+      <h1
+        style={{
+          marginBottom: "10px",
+          display: "flex",
+          justifyContent: "center",
+          fontSize: "40px",
+        }}
+      >
+        👨‍💻 CodePadawan 💫
+      </h1>
+      <div
+        style={{
+          display: "flex",
+          borderBottom: "2px solid #444",
+          marginBottom: "10px",
+          background: "#222",
+          borderRadius: "10px",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          onClick={() => {
+            setLanguage("javascript");
+            setOutput(""); 
+          }}
+          style={{
+            flex: 1,
+            padding: "12px",
+            border: "none",
+            cursor: "pointer",
+            background: language === "javascript" ? "#333" : "transparent",
+            color: language === "javascript" ? "#FFEB3B" : "#fff",
+            fontWeight: "bold",
+            borderBottom:
+              language === "javascript" ? "4px solid #FFEB3B" : "none",
+            borderRadius: "10px 10px 0 0",
+          }}
         >
-          <option value="javascript">JavaScript</option>
-          <option value="python">Python</option>
-          <option value="html">HTML</option>
-          <option value="java">Java</option>
-        </select>
+          JavaScript
+        </button>
+
+        <button
+          onClick={() => {
+            setLanguage("python");
+            setOutput(""); 
+          }}
+          style={{
+            flex: 1,
+            padding: "12px",
+            border: "none",
+            cursor: "pointer",
+            background: language === "python" ? "#333" : "transparent",
+            color: language === "python" ? "#007BFF" : "#fff",
+            fontWeight: "bold",
+            borderBottom: language === "python" ? "4px solid #007BFF" : "none",
+            borderRadius: "10px 10px 0 0",
+          }}
+        >
+          Python
+        </button>
+        <button
+          onClick={() => {
+            setLanguage("html");
+            setOutput(""); 
+          }}
+          style={{
+            flex: 1,
+            padding: "12px",
+            border: "none",
+            cursor: "pointer",
+            background: language === "html" ? "#333" : "transparent",
+            color: language === "html" ? "#FF9800" : "#fff",
+            fontWeight: "bold",
+            borderBottom: language === "html" ? "4px solid #FF9800" : "none",
+            borderRadius: "10px 10px 0 0",
+          }}
+        >
+          HTML
+        </button>
+        <button
+          onClick={() => {
+            setLanguage("java");
+            setOutput(""); 
+          }}
+          style={{
+            flex: 1,
+            padding: "12px",
+            border: "none",
+            cursor: "pointer",
+            background: language === "java" ? "#333" : "transparent",
+            color: language === "java" ? "#D32F2F" : "#fff",
+            fontWeight: "bold",
+            borderBottom: language === "java" ? "4px solid #D32F2F" : "none",
+            borderRadius: "10px 10px 0 0",
+          }}
+        >
+          Java
+        </button>
       </div>
+
       <div
         ref={editorRef}
         style={{
@@ -227,15 +330,27 @@ public class Main {
           marginTop: "10px",
           padding: "8px 16px",
           borderRadius: "5px",
-          background: language === "java" ? "#4CAF50" : "#FF9800",
-          color: "white",
+          background:
+            language === "python"
+              ? "#007BFF" // Azul para Python
+              : language === "java"
+              ? "#D32F2F" // Rojo para Java
+              : language === "html"
+              ? "#FF9800" // Naranja para HTML
+              : language === "javascript"
+              ? "#FFEB3B"
+              : "#4CAF50", // Amarillo para JavaScript
+          color: language === "javascript" ? "#000" : "#fff", // Texto oscuro solo para amarillo
           border: "none",
           cursor: "pointer",
           opacity: !isPyodideReady && language === "python" ? 0.5 : 1,
         }}
       >
-        {isPyodideReady || language !== "python" ? "Ejecutar Código" : "Cargando Pyodide..."}
+        {isPyodideReady || language !== "python"
+          ? "Ejecutar Código"
+          : "Cargando Pyodide..."}
       </button>
+
       <div
         style={{
           marginTop: "20px",
